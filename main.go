@@ -6,6 +6,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	tree_sitter "github.com/tree-sitter/go-tree-sitter"
+	tree_sitter_java "github.com/tree-sitter/tree-sitter-java/bindings/go"
 )
 
 func findFiles(dir string) ([]string, error) {
@@ -45,6 +48,21 @@ func main() {
 
 	fmt.Printf("found %d .java files:\n", len(files))
 	for _, file := range files {
-		fmt.Println(file)
+		raw, err := os.ReadFile(file)
+		if err != nil {
+			fmt.Printf("error reading file %s: %v\n", file, err)
+			continue
+		}
+
+		parser := tree_sitter.NewParser()
+		defer parser.Close()
+
+		language := tree_sitter.NewLanguage(tree_sitter_java.Language())
+		parser.SetLanguage(language)
+
+		tree := parser.Parse(raw, nil)
+		defer tree.Close()
+
+		fmt.Println("parsed file:", file)
 	}
 }
