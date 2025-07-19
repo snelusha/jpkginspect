@@ -11,6 +11,60 @@ import (
 	tree_sitter_java "github.com/tree-sitter/tree-sitter-java/bindings/go"
 )
 
+type PackageParser struct {
+	parser *tree_sitter.Parser
+	query  *tree_sitter.Query
+}
+
+func NewPackageParser() (*PackageParser, error) {
+	parser := tree_sitter.NewParser()
+
+	language := tree_sitter.NewLanguage(tree_sitter_java.Language())
+	parser.SetLanguage(language)
+
+	const q = `
+	  (package_declaration
+	    (scoped_identifier) @package_full)
+	`
+
+	query, _ := tree_sitter.NewQuery(language, string(q))
+	if query == nil {
+		parser.Close()
+		return nil, fmt.Errorf("failed to create query")
+	}
+
+	return &PackageParser{
+		parser: parser,
+		query:  query,
+	}, nil
+}
+
+func (p *PackageParser) GetPackageName(raw []byte) (string, error) {
+	if len(raw) == 0 {
+		return "", fmt.Errorf("no source to parse")
+	}
+
+	tree := p.parser.Parse(raw, nil)
+	defer tree.Close()
+
+	cursor := tree_sitter.NewQueryCursor()
+	defer cursor.Close()
+
+	captures := cursor.Captures(p.query, tree.RootNode(), raw)
+	match, _ := captures.Next()
+	if match == nil {
+		return "", fmt.Errorf("no package declaration found")
+	}
+
+	node := match.Captures[0].Node
+	return node.Utf8Text(raw), nil
+}
+
+func (p *PackageParser) Close() {
+	p.parser.Close()
+	p.query.Close()
+}
+
 func findFiles(dir string) ([]string, error) {
 	var files []string
 	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
@@ -55,33 +109,16 @@ func main() {
 			continue
 		}
 
-		parser := tree_sitter.NewParser()
-		defer parser.Close()
-
-		language := tree_sitter.NewLanguage(tree_sitter_java.Language())
-		parser.SetLanguage(language)
-
-		tree := parser.Parse(raw, nil)
-		defer tree.Close()
-
-		root := tree.RootNode()
-
-		const q = `
-		  (package_declaration
-		    (scoped_identifier) @package_full)
-		`
-
-		query, _ := tree_sitter.NewQuery(language, string(q))
-		defer query.Close()
-
-		cursor := tree_sitter.NewQueryCursor()
-		defer cursor.Close()
-
-		captures := cursor.Captures(query, root, raw)
-		for match, idx := captures.Next(); match != nil; match, idx = captures.Next() {
-			node := match.Captures[idx].Node
-			text := node.Utf8Text(raw)
-			fmt.Printf("Found package: %s in file: %s\n", text, file)
+		parser, err := NewPackageParser()
+		if err != nil {
+			fmt.Printf("error creating parser: %v\n", err)
+			continue
 		}
+		packageName, err := parser.GetPackageName(raw)
+		if err != nil {
+			fmt.Printf("error getting package name from file %s: %v\n", file, err)
+			continue
+		}
+		fmt.Printf("file: %s, Package: %s\n", file, packageName)
 	}
 }
