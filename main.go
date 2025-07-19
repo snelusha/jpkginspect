@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/fs"
 	"os"
@@ -76,6 +77,17 @@ func main() {
 		for _, cls := range parsed.Classes {
 			packageIndex[parsed.Package][cls] = file
 		}
+	}
+
+	b, err := json.MarshalIndent(packageIndex, "", "  ")
+	if err != nil {
+		fmt.Printf("error marshaling package index: %v\n", err)
+		return
+	}
+
+	if err := os.WriteFile("output.json", b, 0644); err != nil {
+		fmt.Printf("error writing output file: %v\n", err)
+		return
 	}
 
 	fmt.Println(packageIndex)
