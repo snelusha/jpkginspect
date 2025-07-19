@@ -27,12 +27,13 @@ func NewParser() (*Parser, error) {
 	parser.SetLanguage(language)
 
 	const q = `
-	[
 	  (package_declaration (scoped_identifier) @pkg)
 	  (class_declaration name: (identifier) @cls)
 	  (import_declaration (scoped_identifier) @imp)
-	]
+	  (interface_declaration name: (identifier) @cls)
+	  (enum_declaration name: (identifier) @cls)
 	`
+
 	query, _ := tree_sitter.NewQuery(language, q)
 	if query == nil {
 		parser.Close()

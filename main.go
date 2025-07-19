@@ -54,6 +54,8 @@ func main() {
 	}
 	defer parser.Close()
 
+	packageIndex := make(map[string]map[string]string)
+
 	for _, file := range files {
 		raw, err := os.ReadFile(file)
 		if err != nil {
@@ -67,6 +69,14 @@ func main() {
 			continue
 		}
 
-		fmt.Println(file, parsed.Package, parsed.Classes, parsed.Imports)
+		if _, exists := packageIndex[parsed.Package]; !exists {
+			packageIndex[parsed.Package] = make(map[string]string)
+		}
+
+		for _, cls := range parsed.Classes {
+			packageIndex[parsed.Package][cls] = file
+		}
 	}
+
+	fmt.Println(packageIndex)
 }
