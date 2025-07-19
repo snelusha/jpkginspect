@@ -47,6 +47,13 @@ func main() {
 
 	fmt.Printf("found %d .java files:\n", len(files))
 
+	parser, err := parser.NewParser()
+	if err != nil {
+		fmt.Printf("error creating parser: %v\n", err)
+		return
+	}
+	defer parser.Close()
+
 	for _, file := range files {
 		raw, err := os.ReadFile(file)
 		if err != nil {
@@ -54,26 +61,12 @@ func main() {
 			continue
 		}
 
-		parser, err := parser.NewParser()
+		parsed, err := parser.Parse(raw)
 		if err != nil {
-			fmt.Printf("error creating parser: %v\n", err)
+			fmt.Printf("error parsing file %s: %v\n", file, err)
 			continue
 		}
 
-		const q = `
-		  (package_declaration
-		    (scoped_identifier) @package_full)
-		`
-
-		results, err := parser.ExecuteQuery(string(q), raw)
-		if err != nil {
-			fmt.Printf("error executing query on file %s: %v\n", file, err)
-			continue
-		}
-		if len(results) == 0 {
-			fmt.Printf("no package declaration found in file %s\n", file)
-			continue
-		}
-		fmt.Printf("file: %s, package: %s\n", file, results[0])
+		fmt.Println(file, parsed.Package, parsed.Classes, parsed.Imports)
 	}
 }
