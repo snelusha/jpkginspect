@@ -47,6 +47,7 @@ func main() {
 	}
 
 	fmt.Printf("found %d .java files:\n", len(files))
+
 	for _, file := range files {
 		raw, err := os.ReadFile(file)
 		if err != nil {
@@ -63,6 +64,24 @@ func main() {
 		tree := parser.Parse(raw, nil)
 		defer tree.Close()
 
-		fmt.Println("parsed file:", file)
+		root := tree.RootNode()
+
+		const q = `
+		  (package_declaration
+		    (scoped_identifier) @package_full)
+		`
+
+		query, _ := tree_sitter.NewQuery(language, string(q))
+		defer query.Close()
+
+		cursor := tree_sitter.NewQueryCursor()
+		defer cursor.Close()
+
+		captures := cursor.Captures(query, root, raw)
+		for match, idx := captures.Next(); match != nil; match, idx = captures.Next() {
+			node := match.Captures[idx].Node
+			text := node.Utf8Text(raw)
+			fmt.Printf("Found package: %s in file: %s\n", text, file)
+		}
 	}
 }
