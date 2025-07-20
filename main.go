@@ -3,27 +3,10 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io/fs"
+	"jpkginspect/internal/fs"
+	"jpkginspect/internal/parser"
 	"os"
-	"path/filepath"
-	"strings"
-
-	parser "jpkginspect/internal/parser"
 )
-
-func findFiles(dir string) ([]string, error) {
-	var files []string
-	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if !d.IsDir() && strings.HasSuffix(d.Name(), ".java") {
-			files = append(files, path)
-		}
-		return nil
-	})
-	return files, err
-}
 
 func main() {
 	args := os.Args[1:]
@@ -35,7 +18,7 @@ func main() {
 
 	dir := args[0]
 
-	files, err := findFiles(dir)
+	files, err := fs.WalkJavaFiles(dir)
 	if err != nil {
 		fmt.Printf("error finding files: %v\n", err)
 		return
@@ -55,7 +38,7 @@ func main() {
 	}
 	defer parser.Close()
 
-	packageIndex := make(map[string]map[string]string)
+	index := make(map[string]map[string]string)
 
 	for _, file := range files {
 		raw, err := os.ReadFile(file)
@@ -70,16 +53,16 @@ func main() {
 			continue
 		}
 
-		if _, exists := packageIndex[parsed.Package]; !exists {
-			packageIndex[parsed.Package] = make(map[string]string)
+		if _, exists := index[parsed.Package]; !exists {
+			index[parsed.Package] = make(map[string]string)
 		}
 
 		for _, cls := range parsed.Classes {
-			packageIndex[parsed.Package][cls] = file
+			index[parsed.Package][cls] = file
 		}
 	}
 
-	b, err := json.MarshalIndent(packageIndex, "", "  ")
+	b, err := json.MarshalIndent(index, "", "  ")
 	if err != nil {
 		fmt.Printf("error marshaling package index: %v\n", err)
 		return
@@ -90,5 +73,5 @@ func main() {
 		return
 	}
 
-	fmt.Println(packageIndex)
+	fmt.Println(index)
 }
