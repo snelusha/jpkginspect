@@ -1,8 +1,8 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
+	"jpkginspect/internal/exporter"
 	"jpkginspect/internal/fs"
 	"jpkginspect/internal/parser"
 	"os"
@@ -28,8 +28,6 @@ func main() {
 		fmt.Println("no .java files found")
 		return
 	}
-
-	fmt.Printf("found %d .java files:\n", len(files))
 
 	parser, err := parser.NewParser()
 	if err != nil {
@@ -62,16 +60,5 @@ func main() {
 		}
 	}
 
-	b, err := json.MarshalIndent(index, "", "  ")
-	if err != nil {
-		fmt.Printf("error marshaling package index: %v\n", err)
-		return
-	}
-
-	if err := os.WriteFile("output.json", b, 0644); err != nil {
-		fmt.Printf("error writing output file: %v\n", err)
-		return
-	}
-
-	fmt.Println(index)
+	err = exporter.WriteJSON(index, "")
 }
