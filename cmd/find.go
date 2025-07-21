@@ -48,6 +48,8 @@ var findCmd = &cobra.Command{
 
 		queue = append(queue, filePath)
 
+		graph := NewGraph()
+
 		for len(queue) > 0 {
 			path, queue = queue[0], queue[1:]
 
@@ -68,17 +70,33 @@ var findCmd = &cobra.Command{
 				continue
 			}
 
+			for _, cls := range parsed.Classes {
+				graph.AddNode(cls)
+			}
+
 			if len(parsed.Imports) == 0 {
 				continue
 			}
 
-			fmt.Println(parsed.Classes)
-
 			normalizedImports := normalizeImports(parsed.Imports, index)
 
-			for _, path := range normalizedImports {
+			for imp, path := range normalizedImports {
+				for _, cls := range parsed.Classes {
+					graph.AddEdge(cls, imp)
+				}
+
 				queue = append(queue, path)
 			}
+		}
+
+		ordered, err := graph.TopologicalSort()
+		if err != nil {
+			fmt.Printf("Error during topological sort: %v\n", err)
+			return
+		}
+
+		for _, cls := range ordered {
+			fmt.Println(cls)
 		}
 	},
 }
@@ -108,4 +126,64 @@ func normalizeImports(imports []string, index types.PackageIndex) (normalized ma
 	}
 
 	return normalized
+}
+
+type Graph struct {
+	adj map[string][]string
+}
+
+func NewGraph() *Graph {
+	return &Graph{
+		adj: make(map[string][]string),
+	}
+}
+
+func (g *Graph) AddNode(node string) {
+	if _, exists := g.adj[node]; !exists {
+		g.adj[node] = nil
+	}
+}
+
+func (g *Graph) AddEdge(from, to string) {
+	g.AddNode(from)
+	g.AddNode(to)
+
+	g.adj[from] = append(g.adj[from], to)
+}
+
+func (g *Graph) TopologicalSort() ([]string, error) {
+	visited := make(map[string]bool)
+	temp := make(map[string]bool)
+
+	var result []string
+
+	var visit func(string) error
+	visit = func(node string) error {
+		if temp[node] {
+			return nil
+		}
+
+		if !visited[node] {
+			temp[node] = true
+			for _, m := range g.adj[node] {
+				if err := visit(m); err != nil {
+					return err
+				}
+			}
+			temp[node] = false
+			visited[node] = true
+			result = append(result, node)
+		}
+		return nil
+	}
+
+	for node := range g.adj {
+		if !visited[node] {
+			if err := visit(node); err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	return result, nil
 }
