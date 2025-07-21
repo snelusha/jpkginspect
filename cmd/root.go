@@ -15,6 +15,7 @@ func init() {
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
 
 	rootCmd.AddCommand(inspectCmd)
+	rootCmd.AddCommand(findCmd)
 }
 
 func Execute() {
