@@ -6,6 +6,7 @@ import (
 	"jpkginspect/internal/parser"
 	"jpkginspect/internal/types"
 	"os"
+	"sort"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -89,11 +90,7 @@ var findCmd = &cobra.Command{
 			}
 		}
 
-		ordered, err := graph.TopologicalSort()
-		if err != nil {
-			fmt.Printf("Error during topological sort: %v\n", err)
-			return
-		}
+		ordered := graph.TopoSortLenient()
 
 		for _, cls := range ordered {
 			fmt.Println(cls)
@@ -151,39 +148,43 @@ func (g *Graph) AddEdge(from, to string) {
 	g.adj[from] = append(g.adj[from], to)
 }
 
-func (g *Graph) TopologicalSort() ([]string, error) {
-	visited := make(map[string]bool)
-	temp := make(map[string]bool)
+func (g *Graph) TopoSortLenient() []string {
+	visited, temp := map[string]bool{}, map[string]bool{}
 
 	var result []string
 
-	var visit func(string) error
-	visit = func(node string) error {
-		if temp[node] {
-			return nil
-		}
-
-		if !visited[node] {
-			temp[node] = true
-			for _, m := range g.adj[node] {
-				if err := visit(m); err != nil {
-					return err
-				}
-			}
-			temp[node] = false
-			visited[node] = true
-			result = append(result, node)
-		}
-		return nil
-	}
-
+	nodes := make([]string, 0, len(g.adj))
 	for node := range g.adj {
-		if !visited[node] {
-			if err := visit(node); err != nil {
-				return nil, err
-			}
+		nodes = append(nodes, node)
+	}
+	sort.Strings(nodes)
+
+	var visit func(string)
+	visit = func(node string) {
+		if visited[node] {
+			return
 		}
+
+		if temp[node] {
+			return
+		}
+
+		temp[node] = true
+
+		nbrs := append([]string(nil), g.adj[node]...)
+		sort.Strings(nbrs)
+
+		for _, m := range nbrs {
+			visit(m)
+		}
+
+		temp[node], visited[node] = false, true
+		result = append(result, node)
 	}
 
-	return result, nil
+	for _, node := range nodes {
+		visit(node)
+	}
+
+	return result
 }
