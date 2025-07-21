@@ -5,6 +5,7 @@ import (
 	"jpkginspect/internal/exporter"
 	"jpkginspect/internal/fs"
 	"jpkginspect/internal/parser"
+	"jpkginspect/internal/types"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -38,7 +39,7 @@ var inspectCmd = &cobra.Command{
 		}
 		defer parser.Close()
 
-		index := make(map[string]map[string]string)
+		index := make(types.PackageIndex)
 
 		for _, file := range files {
 			raw, err := os.ReadFile(file)
