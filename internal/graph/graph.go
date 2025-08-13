@@ -25,6 +25,7 @@ func (g *Graph) AddEdge(from, to string) {
 	g.adj[from] = append(g.adj[from], to)
 }
 
+// FIXME: Resolve cyclic dependencies
 func (g *Graph) TopoSortLenient() []string {
 	visited, temp := map[string]bool{}, map[string]bool{}
 

@@ -51,6 +51,8 @@ var findCmd = &cobra.Command{
 
 		graph := graph.NewGraph()
 
+		var files []string
+
 		for len(queue) > 0 {
 			path, queue = queue[0], queue[1:]
 
@@ -59,6 +61,7 @@ var findCmd = &cobra.Command{
 			}
 
 			visited[path] = true
+			files = append(files, path)
 
 			source, err := os.ReadFile(path)
 			if err != nil {
@@ -90,10 +93,8 @@ var findCmd = &cobra.Command{
 			}
 		}
 
-		ordered := graph.TopoSortLenient()
-
-		for _, cls := range ordered {
-			fmt.Println(cls)
+		for _, file := range files {
+			fmt.Println(file)
 		}
 	},
 }
